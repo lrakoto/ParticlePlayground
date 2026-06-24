@@ -25,7 +25,6 @@
     font-family:'Sora',sans-serif;
     font-weight:300;
     overflow-x:hidden;
-    padding-top:60px;
   }
   ::selection{ background:var(--amber); color:var(--bg); }
 
@@ -486,6 +485,41 @@
     color:var(--dim); text-transform:uppercase;
   }
 
+  /* loader */
+  #loader{
+    position:fixed; inset:0; z-index:20;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg);
+    transition:opacity .8s ease;
+    pointer-events:all;
+  }
+  #loader.loaded{ opacity:0; pointer-events:none; }
+  .loader-content{ text-align:center; }
+  .loader-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.22em;
+    color:var(--amber); text-transform:uppercase;
+  }
+  .loader-bar{
+    width:240px; height:2px; background:var(--hairline);
+    margin:16px auto; overflow:hidden;
+  }
+  .loader-bar i{
+    display:block; width:0%; height:100%;
+    background:var(--amber);
+    transition:width .3s ease;
+  }
+  .loader-pct{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; color:var(--dim);
+  }
+
+  /* cursor */
+  #cursorCanvas{
+    position:fixed; inset:0; z-index:10;
+    pointer-events:none;
+  }
+
   @media (max-width:760px){
     body{ padding-top:52px; }
     nav{ height:52px; padding:0 5vw; }
@@ -508,14 +542,26 @@
     .rw-logos img{ height:24px; }
     .tl-item{ grid-template-columns:1fr; gap:8px; }
     .hud--reel{ display:none; }
+    #cursorCanvas{ display:none; }
   }
   @media (prefers-reduced-motion: reduce){
     .rv{ opacity:1; transform:none; transition:none; }
     .cue::after, .hud--tc .rec{ animation:none; }
+    #cursorCanvas{ display:none; }
   }
 </style>
 </head>
 <body>
+
+<div id="loader">
+  <div class="loader-content">
+    <div class="loader-label">REEL LOADING</div>
+    <div class="loader-bar"><i id="loaderFill"></i></div>
+    <div class="loader-pct" id="loaderPct">0%</div>
+  </div>
+</div>
+
+<canvas id="cursorCanvas"></canvas>
 
 <nav>
   <ul class="nav-links">
@@ -770,8 +816,22 @@
   <span>Los Angeles, CA</span>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import Lenis from 'https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/+esm';
+
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isMobile = window.innerWidth < 760;
 const COUNT = isMobile ? 6000 : 14000;
@@ -784,6 +844,18 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, .1, 100);
 camera.position.set(0, 0, 18);
+
+/* ---------- formation generators ---------- */
+
+function makeScatter(){
+  const a = new Float32Array(COUNT*3);
+  for(let i=0;i<COUNT;i++){
+    a[i*3]   = (Math.random()-.5)*80;
+    a[i*3+1] = (Math.random()-.5)*60;
+    a[i*3+2] = (Math.random()-.5)*40;
+  }
+  return a;
+}
 
 function makeWave(){
   const a = new Float32Array(COUNT*3);
@@ -798,6 +870,7 @@ function makeWave(){
   }
   return a;
 }
+
 function makeHelix(){
   const a = new Float32Array(COUNT*3);
   for(let i=0;i<COUNT;i++){
@@ -811,6 +884,7 @@ function makeHelix(){
   }
   return a;
 }
+
 function makeSphere(){
   const a = new Float32Array(COUNT*3);
   const phi = Math.PI*(3 - Math.sqrt(5));
@@ -825,6 +899,7 @@ function makeSphere(){
   }
   return a;
 }
+
 function makeRing(){
   const a = new Float32Array(COUNT*3);
   for(let i=0;i<COUNT;i++){
@@ -836,6 +911,7 @@ function makeRing(){
   }
   return a;
 }
+
 function makeGrid(){
   const a = new Float32Array(COUNT*3);
   const side = Math.ceil(Math.sqrt(COUNT));
@@ -848,9 +924,96 @@ function makeGrid(){
   }
   return a;
 }
-const formations = [makeWave(), makeHelix(), makeSphere(), makeRing(), makeGrid()];
 
-const positions = new Float32Array(formations[0]);
+/* organic double-spiral for About section */
+function makeOrganic(){
+  const a = new Float32Array(COUNT*3);
+  for(let i=0;i<COUNT;i++){
+    const t = i/COUNT;
+    const ang = t*Math.PI*8;
+    const r = 6 + Math.sin(t*12)*1.2;
+    const spread = 1 + Math.sin(t*15)*.5;
+    a[i*3]   = Math.cos(ang)*r * spread;
+    a[i*3+1] = (t-.5)*14 + Math.sin(ang*2)*2;
+    a[i*3+2] = Math.sin(ang)*r * .6 + Math.cos(t*20)*1.5;
+  }
+  return a;
+}
+
+/* gallery grid for Work section */
+function makeGallery(){
+  const a = new Float32Array(COUNT*3);
+  const cols = 14;
+  const rows = Math.ceil(COUNT/cols);
+  for(let i=0;i<COUNT;i++){
+    const col = i % cols;
+    const row = Math.floor(i/cols);
+    const cx = (col/cols - .5)*28;
+    const cy = (row/rows - .5)*16;
+    const depth = (Math.floor(col/2) + Math.floor(row/2)) % 3 - 1;
+    a[i*3]   = cx + (Math.random()-.5)*1.8;
+    a[i*3+1] = -cy + (Math.random()-.5)*1.8;
+    a[i*3+2] = depth*3 + (Math.random()-.5)*.8;
+  }
+  return a;
+}
+
+/* ---------- text-based formations ---------- */
+function makeTextFormation(text){
+  const c = document.createElement('canvas');
+  const w = 512, h = 256;
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 160px Anton';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, w/2, h/2);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const points = [];
+  const step = 4;
+  for(let y=0;y<h;y+=step){
+    for(let x=0;x<w;x+=step){
+      const i = (y*w + x)*4;
+      if(data[i+3]>128){
+        points.push({
+          x: (x/w - .5)*32,
+          y: (.5 - y/h)*18,
+          z: (Math.random()-.5)*3
+        });
+      }
+    }
+  }
+  const a = new Float32Array(COUNT*3);
+  if(points.length===0) return a;
+  for(let i=0;i<COUNT;i++){
+    const src = points[i % points.length];
+    const jx = (Math.random()-.5)*.15;
+    const jy = (Math.random()-.5)*.15;
+    const jz = (Math.random()-.5)*.15;
+    a[i*3]   = src.x + jx;
+    a[i*3+1] = src.y + jy;
+    a[i*3+2] = src.z + jz;
+  }
+  return a;
+}
+
+/* ---------- setup ---------- */
+
+const scatterPos = makeScatter();
+const formations = [makeWave(), makeOrganic(), makeGallery(), makeHelix(), makeRing(), makeGrid()];
+const textForms = [
+  null,
+  makeTextFormation('DESIGN'),
+  makeTextFormation('WORK'),
+  null,
+  makeTextFormation('CONTACT')
+];
+
+let currentTextTarget = -1;
+let textFade = 0;
+
+const positions = new Float32Array(scatterPos);
 const colors = new Float32Array(COUNT*3);
 const seeds  = new Float32Array(COUNT);
 const sizes  = new Float32Array(COUNT);
@@ -905,78 +1068,247 @@ const mat = new THREE.ShaderMaterial({
 const points = new THREE.Points(geo, mat);
 scene.add(points);
 
-let progress = 0;
-let targetProgress = 0;
-let velocity = 0;
-let lastY = scrollY;
-
-function readScroll(){
-  const max = document.documentElement.scrollHeight - innerHeight;
-  targetProgress = max > 0 ? scrollY / max : 0;
-  velocity += Math.min(Math.abs(scrollY - lastY)*.004, .5);
-  lastY = scrollY;
+/* ---------- post-processing bloom ---------- */
+let composer = null;
+let bloomPass = null;
+if(!isMobile && !reduced){
+  try {
+    composer = new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    bloomPass = new THREE.UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.35, 0.4, 0.15
+    );
+    composer.addPass(bloomPass);
+  } catch(e) {
+    composer = null;
+  }
 }
-addEventListener('scroll', readScroll, { passive:true });
 
+/* ---------- loading sequence ---------- */
+const loaderEl = document.getElementById('loader');
+const loaderFill = document.getElementById('loaderFill');
+const loaderPct = document.getElementById('loaderPct');
+let loaded = false;
+let loadProgress = 0;
+let loadDone = false;
+
+/* first formation target for assembly */
+let assemblyTarget = 0;
+let assemblyProgress = 0;
+
+function startLoading(){
+  const duration = 2500;
+  const start = performance.now();
+  function tick(now){
+    const elapsed = now - start;
+    loadProgress = Math.min(elapsed / duration, 1);
+    const pct = Math.round(loadProgress * 100);
+    loaderFill.style.width = pct + '%';
+    loaderPct.textContent = pct + '%';
+    if(loadProgress < 1){
+      requestAnimationFrame(tick);
+    } else {
+      loadDone = true;
+      setTimeout(() => {
+        loaderEl.classList.add('loaded');
+        loaded = true;
+      }, 400);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Lenis smooth scroll ---------- */
+const lenis = new Lenis({
+  duration: 1.2,
+  easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  smoothWheel: true,
+  wheelMultiplier: isMobile ? 0.8 : 1,
+  touchMultiplier: isMobile ? 0.8 : 1,
+});
+
+let scrollVelocity = 0;
+let targetProgress = 0;
+let progress = 0;
+
+lenis.on('scroll', e => {
+  const html = document.documentElement;
+  const max = html.scrollHeight - innerHeight;
+  targetProgress = max > 0 ? e.animatedScroll / max : 0;
+  scrollVelocity += Math.min(Math.abs(e.velocity) * 0.004, 0.5);
+});
+
+function lenisRaf(time){
+  requestAnimationFrame(lenisRaf);
+  lenis.raf(time);
+}
+lenisRaf();
+
+/* ---------- custom cursor ---------- */
+let cursorHide = isMobile || reduced;
+const cursorCanvas = document.getElementById('cursorCanvas');
+const ctx = cursorCanvas.getContext('2d');
+let cw, ch;
+function resizeCursor(){
+  cw = cursorCanvas.width = innerWidth;
+  ch = cursorCanvas.height = innerHeight;
+}
+resizeCursor();
+addEventListener('resize', resizeCursor);
+
+const trails = [];
+let cursorX = 0, cursorY = 0;
+
+document.addEventListener('pointermove', e => {
+  cursorX = e.clientX;
+  cursorY = e.clientY;
+});
+
+function drawCursor(){
+  if(cursorHide){ ctx.clearRect(0,0,cw,ch); return; }
+  ctx.clearRect(0,0,cw,ch);
+  trails.push({ x:cursorX, y:cursorY, life:1 });
+  for(let i=trails.length-1;i>=0;i--){
+    const t = trails[i];
+    t.life -= 0.025;
+    t.x += (cursorX - t.x) * 0.06;
+    t.y += (cursorY - t.y) * 0.06;
+    if(t.life <= 0){ trails.splice(i,1); continue; }
+    const r = t.life * 2.5;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(217,140,74,${t.life * 0.35})`;
+    ctx.fill();
+  }
+}
+
+/* ---------- interaction ---------- */
 const mouse = { x:0, y:0, tx:0, ty:0 };
-addEventListener('pointermove', e=>{
+document.addEventListener('pointermove', e => {
   mouse.tx = (e.clientX/innerWidth - .5);
   mouse.ty = (e.clientY/innerHeight - .5);
 });
 
+/* ---------- clock & state ---------- */
 const clock = new THREE.Clock();
 const SEGS = formations.length - 1;
+let lastSectionIdx = -1;
+
+function getSectionIndex(prog){
+  const total = 5;
+  const idx = Math.min(Math.floor(prog * total), total - 1);
+  return idx;
+}
 
 function frame(){
   requestAnimationFrame(frame);
   const t = clock.getElapsedTime();
   mat.uniforms.uTime.value = t;
 
-  progress += (targetProgress - progress)*.07;
-  velocity *= .92;
+  /* assembly phase — scatter → wave */
+  if(!loadDone){
+    assemblyProgress += (loadProgress - assemblyProgress) * 0.04;
+    const ease = assemblyProgress*assemblyProgress*(3-2*assemblyProgress);
+    const A = scatterPos;
+    const B = formations[0];
+    const pos = geo.attributes.position.array;
+    for(let i=0;i<COUNT;i++){
+      const j = i*3, s = seeds[i];
+      const n = Math.sin(t*.6 + s)*.08;
+      pos[j]   += (A[j] + (B[j]-A[j])*ease + n - pos[j]) * 0.06;
+      pos[j+1] += (A[j+1] + (B[j+1]-A[j+1])*ease - pos[j+1]) * 0.06;
+      pos[j+2] += (A[j+2] + (B[j+2]-A[j+2])*ease - pos[j+2]) * 0.06;
+    }
+    geo.attributes.position.needsUpdate = true;
+    if(composer) composer.render(); else renderer.render(scene, camera);
+    return;
+  }
 
-  const f = Math.min(progress*SEGS, SEGS - .0001);
+  /* normal phase */
+  progress += (targetProgress - progress) * 0.07;
+  scrollVelocity *= 0.92;
+
+  /* detect section for text formation */
+  const sectionIdx = getSectionIndex(progress);
+  if(sectionIdx !== lastSectionIdx){
+    lastSectionIdx = sectionIdx;
+    if(textForms[sectionIdx]){
+      currentTextTarget = sectionIdx;
+      textFade = 0;
+    }
+  }
+
+  textFade = Math.min(textFade + 0.008, 1);
+
+  const f = Math.min(progress * SEGS, SEGS - 0.0001);
   const idx = Math.floor(f);
   const segT = f - idx;
   const ease = segT*segT*(3-2*segT);
-  const A = formations[idx], B = formations[idx+1];
+  const A = formations[idx];
+  const B = formations[Math.min(idx+1, SEGS)];
 
   const pos = geo.attributes.position.array;
-  const turb = reduced ? 0 : velocity;
+  const turb = reduced ? 0 : scrollVelocity;
+  const mx = mouse.tx * 22;
+  const my = -mouse.ty * 14;
+
   for(let i=0;i<COUNT;i++){
     const j = i*3, s = seeds[i];
-    const dx = A[j]   + (B[j]  -A[j]  )*ease;
-    const dy = A[j+1] + (B[j+1]-A[j+1])*ease;
-    const dz = A[j+2] + (B[j+2]-A[j+2])*ease;
+
+    /* base morph */
+    let dx = A[j]   + (B[j]  -A[j]  )*ease;
+    let dy = A[j+1] + (B[j+1]-A[j+1])*ease;
+    let dz = A[j+2] + (B[j+2]-A[j+2])*ease;
+
+    /* text overlay */
+    if(currentTextTarget >= 0 && textForms[currentTextTarget] && textFade > 0){
+      const tf = textForms[currentTextTarget];
+      const textWeight = textFade * 0.35 * (1 - ease);
+      dx += (tf[j] - dx) * textWeight;
+      dy += (tf[j+1] - dy) * textWeight;
+      dz += (tf[j+2] - dz) * textWeight;
+    }
+
+    /* noise turbulence */
     const n = Math.sin(t*.6 + s)* .12 + Math.sin(t*2.3 + s*3.1)*turb*2.2;
-    pos[j]   += (dx + n               - pos[j]  )*.06;
-    pos[j+1] += (dy + Math.cos(t*.5+s)*.12 - pos[j+1])*.06;
-    pos[j+2] += (dz + n*.6            - pos[j+2])*.06;
+
+    /* mouse repulsion */
+    const ddx = dx - mx;
+    const ddy = dy - my;
+    const dist = Math.sqrt(ddx*ddx + ddy*ddy);
+    let repelX = 0, repelY = 0;
+    if(dist < 5 && dist > 0.01){
+      const force = (1 - dist/5) * 1.5;
+      repelX = ddx/dist * force;
+      repelY = ddy/dist * force;
+    }
+
+    pos[j]   += (dx + n + repelX              - pos[j]  ) * 0.06;
+    pos[j+1] += (dy + Math.cos(t*.5+s)*.12 + repelY - pos[j+1]) * 0.06;
+    pos[j+2] += (dz + n*.6                   - pos[j+2]) * 0.06;
   }
   geo.attributes.position.needsUpdate = true;
 
-  mouse.x += (mouse.tx - mouse.x)*.04;
-  mouse.y += (mouse.ty - mouse.y)*.04;
+  mouse.x += (mouse.tx - mouse.x)*0.04;
+  mouse.y += (mouse.ty - mouse.y)*0.04;
   camera.position.x = mouse.x*2.2;
   camera.position.y = -mouse.y*1.6;
   camera.position.z = 18 - progress*7;
   camera.lookAt(0,0,0);
-  points.rotation.y = progress*Math.PI*.5 + (reduced ? 0 : t*.02);
+  points.rotation.y = progress*Math.PI*0.5 + (reduced ? 0 : t*0.02);
 
-  renderer.render(scene, camera);
+  if(composer) composer.render(); else renderer.render(scene, camera);
+
+  drawCursor();
 }
-frame();
 
-addEventListener('resize', ()=>{
-  camera.aspect = innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+/* ---------- UI handlers ---------- */
 
+/* HUD */
 const tcEl = document.getElementById('tc');
 const reelEl = document.getElementById('reel');
 const stripEl = document.getElementById('stripFill');
-
 function hud(){
   requestAnimationFrame(hud);
   const totalFrames = 90*24;
@@ -1008,6 +1340,7 @@ document.querySelectorAll('.glass').forEach(el=>{
   });
 });
 
+/* intersection observer for reel label & reveal */
 const sections = document.querySelectorAll('section');
 const io = new IntersectionObserver(entries=>{
   entries.forEach(e=>{
@@ -1018,6 +1351,19 @@ const io = new IntersectionObserver(entries=>{
   });
 },{ threshold:.35 });
 sections.forEach(s=>io.observe(s));
+
+/* resize */
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  if(composer) composer.setSize(innerWidth, innerHeight);
+  lenis.resize();
+});
+
+/* ---------- start ---------- */
+startLoading();
+frame();
 </script>
 </body>
 </html>
