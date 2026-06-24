@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lova Rakoto — Digital Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Sora:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:        #05070C;
+    --ink:       #E9F0F8;
+    --dim:       #7C8CA0;
+    --hairline:  rgba(233,240,248,.10);
+    --amber:     #D98C4A;
+    --blue:      #8FB8DC;
+    --green:     #6BBF8A;
+    --glass:     rgba(5,7,12,.65);
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:auto; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Sora',sans-serif;
+    font-weight:300;
+    overflow-x:hidden;
+    padding-top:60px;
+  }
+  ::selection{ background:var(--amber); color:var(--bg); }
+
+  /* nav */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:4;
+    display:flex; align-items:center;
+    padding:0 8vw;
+    height:60px;
+    background:rgba(5,7,12,.8);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--hairline);
+  }
+  nav .nav-links{
+    display:flex; gap:28px; list-style:none;
+  }
+  nav .nav-links a{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dim); text-decoration:none;
+    transition:color .3s;
+  }
+  nav .nav-links a:hover{ color:var(--amber); }
+  nav .nav-resume{
+    margin-left:auto;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink); text-decoration:none;
+    padding:8px 18px;
+    border:1px solid var(--amber);
+    transition:background .3s, color .3s;
+  }
+  nav .nav-resume:hover{ background:var(--amber); color:var(--bg); }
+
+  #scene{
+    position:fixed; inset:0; z-index:0;
+    pointer-events:none;
+  }
+  .grain{
+    position:fixed; inset:0; z-index:2; pointer-events:none;
+    opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
+  }
+
+  .hud{
+    position:fixed; z-index:5;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em;
+    color:var(--dim);
+  }
+  .hud--tc{ top:80px; right:28px; display:flex; align-items:center; gap:10px; }
+  .hud--tc .rec{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--amber);
+    animation:blink 1.6s steps(2,start) infinite;
+  }
+  .hud--tc .num{ color:var(--ink); }
+  .hud--reel{ bottom:24px; right:28px; text-align:right; }
+  .hud--brand{ top:80px; left:28px; }
+  .hud--brand b{ color:var(--ink); font-weight:500; }
+  @keyframes blink{ to{ visibility:hidden; } }
+
+  .strip{
+    position:fixed; left:0; top:0; bottom:0; width:3px; z-index:5;
+    background:var(--hairline);
+  }
+  .strip i{
+    display:block; width:100%; height:0%;
+    background:linear-gradient(var(--blue), var(--amber));
+  }
+
+  main{ position:relative; z-index:3; }
+  section{
+    min-height:100vh;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:0 8vw;
+    position:relative;
+  }
+  .split{
+    display:grid; grid-template-columns:1fr 1.3fr;
+    gap:5vw;
+    align-items:start;
+  }
+  .split-head{ max-width:40ch; }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--amber);
+    margin-bottom:28px;
+  }
+  h1,h2{
+    font-family:'Anton',sans-serif;
+    font-weight:400;
+    text-transform:uppercase;
+    line-height:.92;
+    letter-spacing:.01em;
+  }
+  h1{ font-size:clamp(56px, 11vw, 168px); }
+  h2{ font-size:clamp(40px, 7vw, 110px); color:var(--ink); }
+  .lede{
+    max-width:56ch; margin-top:32px;
+    font-size:clamp(15px,1.3vw,19px); line-height:1.7; color:var(--dim);
+  }
+  .lede strong{ color:var(--ink); font-weight:400; }
+
+  .rv{ opacity:0; transform:translateY(34px); transition:opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1); }
+  .rv.in{ opacity:1; transform:none; }
+  .rv:nth-child(2){ transition-delay:.08s } .rv:nth-child(3){ transition-delay:.16s }
+  .rv:nth-child(4){ transition-delay:.24s }
+
+  .cue{
+    position:absolute; bottom:36px; left:8vw;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.2em;
+    color:var(--dim); display:flex; align-items:center; gap:14px;
+  }
+  .cue::after{
+    content:""; width:54px; height:1px; background:var(--dim);
+    animation:cue 2.2s ease-in-out infinite;
+    transform-origin:left;
+  }
+  @keyframes cue{ 0%,100%{ transform:scaleX(.3); opacity:.4 } 50%{ transform:scaleX(1); opacity:1 } }
+
+  /* glass */
+  .glass{
+    position:relative;
+    background:var(--glass);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:4px;
+    isolation:isolate;
+  }
+  .glass::after{
+    content:'';
+    position:absolute;
+    top:-1px; left:-1px; right:-1px; bottom:-1px;
+    border-radius:5px;
+    background:radial-gradient(400px circle at var(--mx,50%) var(--my,50%), rgba(217,140,74,.25), transparent 60%);
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .5s ease;
+    z-index:1;
+    -webkit-mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
+    mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
+    -webkit-mask-clip:border-box,padding-box;
+    mask-clip:border-box,padding-box;
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+  }
+  .glass{ border-color:var(--hairline); transition:border-color .5s ease; }
+  .glass:hover{ border-color:rgba(217,140,74,.25); }
+  .glass:hover::after{ opacity:1; }
+
+  /* skills badges */
+  .skill-badges{
+    display:flex; flex-wrap:wrap; gap:10px;
+    margin-top:32px;
+  }
+  .skill-badges span{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    padding:8px 16px;
+    border:1px solid var(--hairline);
+    color:var(--dim);
+    transition:color .3s, border-color .3s, background .3s;
+  }
+  .skill-badges span:hover{ color:var(--amber); border-color:var(--amber); background:rgba(217,140,74,.08); }
+
+  /* about - reference layout */
+  .ab-head{
+    display:grid; grid-template-columns:auto 1fr;
+    gap:4vw;
+    align-items:end;
+    margin-bottom:48px;
+  }
+  .ab-head p{
+    color:var(--dim);
+    font-size:clamp(14px,1.2vw,17px);
+    line-height:1.7;
+    max-width:52ch;
+  }
+  .ab-content{
+    display:grid; grid-template-columns:1fr 1.3fr;
+    gap:2vw;
+    align-items:start;
+  }
+  .ab-left{
+    display:flex; flex-direction:column; gap:2vw;
+  }
+  .ab-visual{
+    position:relative;
+    padding:48px 32px;
+    border:1px solid var(--hairline);
+    overflow:hidden;
+    min-height:200px;
+    display:flex; align-items:flex-end;
+  }
+  .ab-visual-bg{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, rgba(143,184,220,.15), transparent),
+      radial-gradient(ellipse 60% 80% at 80% 70%, rgba(217,140,74,.1), transparent);
+    border-radius:inherit;
+    animation:abglow 8s ease-in-out infinite alternate;
+  }
+  @keyframes abglow{
+    0%{ opacity:.6; transform:scale(1); }
+    100%{ opacity:1; transform:scale(1.03); }
+  }
+  .ab-visual span{
+    position:relative; z-index:1;
+    font-size:clamp(15px,1.3vw,19px);
+    line-height:1.6;
+    color:var(--dim);
+    max-width:38ch;
+  }
+  .ab-visual span strong{ color:var(--ink); font-weight:400; }
+  .ab-process{
+    padding:28px;
+    border:1px solid var(--hairline);
+  }
+  .ab-process h5{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500; font-size:12px;
+    letter-spacing:.18em; text-transform:uppercase;
+    color:var(--ink);
+    margin-bottom:20px;
+  }
+  .ab-process-list{
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .ab-pstep{
+    display:grid; grid-template-columns:32px 1fr;
+    gap:14px;
+    align-items:start;
+  }
+  .ab-pstep .ab-pnum{
+    font-family:'Anton',sans-serif;
+    font-size:20px;
+    color:var(--amber);
+    line-height:1.4;
+  }
+  .ab-pstep h6{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500; font-size:11px;
+    letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink);
+    margin-bottom:4px;
+  }
+  .ab-pstep p{
+    font-size:13px; line-height:1.6; color:var(--dim);
+  }
+
+  /* services grid */
+  .services-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:2vw;
+  }
+  .service-card{
+    padding:28px;
+    border:1px solid var(--hairline);
+    transition:border-color .4s, padding-left .4s, background .3s;
+  }
+  .service-card:hover{ padding-left:36px; }
+  .service-card h4{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500; font-size:12px;
+    letter-spacing:.18em; text-transform:uppercase;
+    color:var(--ink);
+    margin-bottom:14px;
+  }
+  .service-card p{ font-size:14px; line-height:1.75; color:var(--dim); }
+  .service-card ul{
+    list-style:none; margin-top:12px;
+  }
+  .service-card li{
+    font-size:13px; line-height:1.8; color:var(--dim);
+    padding-left:14px; position:relative;
+  }
+  .service-card li::before{
+    content:"—"; position:absolute; left:0;
+    color:var(--amber);
+  }
+
+  /* work - mockup layout */
+  .rw-section{
+    display:grid;
+    grid-template-columns:1fr 1.3fr;
+    grid-template-rows:1fr auto;
+    gap:0;
+    margin-top:48px;
+    padding:0;
+    border:1px solid var(--hairline);
+    overflow:hidden;
+    min-height:420px;
+  }
+  .rw-left{
+    padding:32px 28px;
+    display:flex; flex-direction:column; gap:0;
+    border-right:1px solid var(--hairline);
+  }
+  .rw-project{
+    padding:24px 20px;
+    cursor:pointer;
+    border-left:2px solid transparent;
+    transition:border-color .4s, background .3s, padding-left .4s;
+  }
+  .rw-project:hover{ padding-left:32px; background:rgba(217,140,74,.04); }
+  .rw-project.active{ border-left-color:var(--amber); background:rgba(217,140,74,.06); }
+  .rw-project .rw-year{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    color:var(--dim); letter-spacing:.14em;
+  }
+  .rw-project h3{
+    font-family:'Anton',sans-serif; font-weight:400; text-transform:uppercase;
+    font-size:clamp(22px,2.8vw,40px); line-height:1.1;
+    margin:6px 0 10px;
+    transition:color .3s;
+  }
+  .rw-project.active h3{ color:var(--amber); }
+  .rw-project p{
+    font-size:13px; line-height:1.6; color:var(--dim);
+    margin-bottom:14px; max-width:50ch;
+  }
+  .rw-project .rw-links{
+    display:flex; gap:16px;
+  }
+  .rw-project .rw-links a{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--blue); text-decoration:none;
+    transition:color .3s;
+  }
+  .rw-project .rw-links a:hover{ color:var(--amber); }
+  .rw-right{
+    position:relative;
+    padding:32px;
+    background:var(--bg);
+    min-height:380px;
+  }
+  .rw-img{
+    position:absolute;
+    top:32px; left:32px; right:32px; bottom:32px;
+    opacity:0;
+    transition:opacity .5s ease, transform .5s ease;
+    transform:translateY(16px);
+  }
+  .rw-img.visible{ opacity:1; transform:translateY(0); }
+  .rw-img img{
+    width:100%; height:100%;
+    object-fit:cover;
+    border-radius:3px;
+    display:block;
+    box-shadow:0 16px 56px rgba(0,0,0,.55), 0 0 80px rgba(217,140,74,.08);
+  }
+  .rw-overlay{
+    position:absolute; bottom:0; left:0; right:0;
+    padding:24px 28px;
+    background:linear-gradient(transparent, rgba(5,7,12,.8));
+    display:flex; gap:16px;
+    z-index:2;
+  }
+  .rw-overlay a{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    text-decoration:none;
+    padding:8px 18px;
+    border:1px solid rgba(233,240,248,.25);
+    color:var(--ink);
+    transition:background .3s, border-color .3s;
+  }
+  .rw-overlay a:hover{ background:rgba(233,240,248,.1); border-color:var(--amber); }
+  .rw-logos{
+    grid-column:1/-1;
+    display:flex; flex-wrap:wrap; gap:28px 48px;
+    padding:20px 32px;
+    align-items:center;
+    justify-content:center;
+    border-top:1px solid var(--hairline);
+  }
+  .rw-logos img{
+    height:32px; opacity:.6;
+    transition:opacity .4s, filter .4s;
+    filter:grayscale(0) brightness(1);
+  }
+  .rw-logos img:hover{ opacity:1; filter:grayscale(0) brightness(1.2); }
+
+  /* timeline */
+  .timeline{
+    border:1px solid var(--hairline);
+    overflow:hidden;
+  }
+  .tl-item{
+    display:grid; grid-template-columns:120px 1fr;
+    gap:24px;
+    padding:28px;
+    transition:padding-left .4s, background .3s;
+    border-bottom:1px solid var(--hairline);
+  }
+  .tl-item:last-child{ border-bottom:none; }
+  .tl-item:hover{ padding-left:36px; background:rgba(217,140,74,.06); }
+  .tl-item .year{
+    font-family:'Anton',sans-serif;
+    font-size:clamp(24px,2.8vw,42px);
+    color:var(--hairline);
+    line-height:1;
+  }
+  .tl-item .detail h4{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500; font-size:12px;
+    letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink);
+    margin-bottom:4px;
+  }
+  .tl-item .detail p{
+    font-size:14px; line-height:1.6; color:var(--dim);
+  }
+
+  /* contact */
+  .contact a{
+    color:var(--ink); text-decoration:none;
+    border-bottom:1px solid var(--amber);
+    transition:color .3s;
+  }
+  .contact a:hover{ color:var(--amber); }
+  .contact .lede{ font-size:clamp(17px,1.6vw,22px); }
+  .contact .socials{
+    display:flex; gap:24px; margin-top:24px;
+  }
+  .contact .socials a{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dim); text-decoration:none;
+    border-bottom:none;
+    transition:color .3s;
+  }
+  .contact .socials a:hover{ color:var(--amber); border-bottom:none; }
+  .contact .resume-btn{
+    display:inline-block;
+    margin-top:28px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink); text-decoration:none;
+    padding:12px 28px;
+    border:1px solid var(--amber);
+    transition:background .3s, color .3s;
+  }
+  .contact .resume-btn:hover{ background:var(--amber); color:var(--bg); }
+
+  footer{
+    position:relative; z-index:3;
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    padding:28px 8vw 36px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em;
+    color:var(--dim); text-transform:uppercase;
+  }
+
+  @media (max-width:760px){
+    body{ padding-top:52px; }
+    nav{ height:52px; padding:0 5vw; }
+    nav .nav-links{ gap:16px; }
+    nav .nav-links a{ font-size:10px; }
+    nav .nav-resume{ padding:6px 14px; font-size:10px; }
+    .hud--brand{ top:72px; left:20px; }
+    .hud--tc{ top:72px; right:20px; }
+    .ab-head{ grid-template-columns:1fr; gap:16px; align-items:start; }
+    .ab-content{ grid-template-columns:1fr; gap:24px; }
+    .ab-left{ gap:16px; }
+    .ab-visual{ padding:32px 24px; min-height:150px; }
+    .services-grid{ grid-template-columns:1fr; gap:24px; }
+    .split{ grid-template-columns:1fr; gap:24px; }
+    .rw-section{ grid-template-columns:1fr; grid-template-rows:auto auto auto; min-height:auto; }
+    .rw-left{ border-right:none; border-bottom:1px solid var(--hairline); }
+    .rw-right{ min-height:220px; padding:20px; }
+    .rw-img{ top:20px; left:20px; right:20px; bottom:20px; }
+    .rw-logos{ gap:16px 24px; padding:16px 20px; }
+    .rw-logos img{ height:24px; }
+    .tl-item{ grid-template-columns:1fr; gap:8px; }
+    .hud--reel{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .rv{ opacity:1; transform:none; transition:none; }
+    .cue::after, .hud--tc .rec{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <ul class="nav-links">
+    <li><a href="#hero">Home</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#work">Work</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a class="nav-resume" href="https://threeohfivestudios.com/wp-content/uploads/2026/03/Lova_Resume_2026.pdf" target="_blank">Resume</a>
+</nav>
+
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<div class="hud hud--brand"><b>LOVA</b> RAKOTO</div>
+<div class="hud hud--tc"><span class="rec"></span>TC <span class="num" id="tc">00:00:00:00</span></div>
+<div class="hud hud--reel" id="reel">REEL 01 / OPEN</div>
+<div class="strip"><i id="stripFill"></i></div>
+
+<main>
+
+  <!-- 01 — HERO -->
+  <section id="hero" data-reel="REEL 01 / OPEN">
+    <p class="eyebrow rv">Los Angeles — Web Development & Design</p>
+    <h1 class="rv">Hi, I'm<br>Lova.</h1>
+    <p class="lede rv">I'm a web developer and designer based in Los Angeles. I use code and
+      visual design to build <strong>brand experiences</strong> — from high-traffic e-commerce
+      to bespoke interactive portfolios.</p>
+    <div class="skill-badges rv">
+      <span class="glass">Web Design</span>
+      <span class="glass">UI / UX</span>
+      <span class="glass">Frontend Dev</span>
+      <span class="glass">A/B Testing</span>
+      <span class="glass">CMS Systems</span>
+    </div>
+    <div class="cue">SCROLL TO EXPLORE</div>
+  </section>
+
+  <!-- 02 — ABOUT + EXPERTISE -->
+  <section id="about" data-reel="REEL 02 / EXPERTISE">
+    <p class="eyebrow rv">About</p>
+    <div class="ab-head">
+      <h2 class="rv">Design &<br>development,<br>unified.</h2>
+      <p class="rv">I specialize in helping businesses and individuals create an impactful,
+        thoughtful, and elegant digital presence. Success is built on <strong>vision, strategy,
+        and collaboration</strong> — every project moves from concept to launch with intention.</p>
+    </div>
+
+    <div class="ab-content">
+      <div class="ab-left">
+        <div class="ab-visual glass">
+          <div class="ab-visual-bg"></div>
+          <span>Success is built on <strong>vision, strategy, and collaboration.</strong></span>
+        </div>
+        <div class="ab-process glass">
+          <h5>Data-driven Process</h5>
+          <div class="ab-process-list">
+            <div class="ab-pstep">
+              <span class="ab-pnum">01</span>
+              <div>
+                <h6>Fast Prototyping</h6>
+                <p>Get a working, production-ready prototype deployed to gather real-world data to iterate on.</p>
+              </div>
+            </div>
+            <div class="ab-pstep">
+              <span class="ab-pnum">02</span>
+              <div>
+                <h6>Data Collection & Testing</h6>
+                <p>Data-driven insights combined with informed solutions for quick iteration and metric improvement.</p>
+              </div>
+            </div>
+            <div class="ab-pstep">
+              <span class="ab-pnum">03</span>
+              <div>
+                <h6>Analyze & Redeploy</h6>
+                <p>Analysis leads to improved strategy. Relaunch better informed, with results backed by data.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ab-right">
+        <div class="services-grid rv">
+          <div class="service-card glass">
+            <h4>Web Design & Development</h4>
+            <p>End-to-end web experiences combining strong visual design with clean, scalable development.</p>
+            <ul>
+              <li>Responsive implementation</li>
+              <li>Figma → production</li>
+              <li>HTML, CSS, JavaScript, React</li>
+              <li>CMS adaptation (WordPress, Builder.io)</li>
+            </ul>
+          </div>
+          <div class="service-card glass">
+            <h4>Visual Design & UI/UX</h4>
+            <p>Intuitive, compelling interfaces that balance aesthetics, usability, and performance.</p>
+            <ul>
+              <li>Figma design systems & mockups</li>
+              <li>Visual design systems</li>
+              <li>UX audits & usability improvements</li>
+              <li>Conversion-focused design (CRO)</li>
+            </ul>
+          </div>
+          <div class="service-card glass">
+            <h4>A/B Testing & Performance</h4>
+            <p>Websites as growth tools — using data and experimentation to improve outcomes.</p>
+            <ul>
+              <li>Experiment implementation</li>
+              <li>Analytics integration</li>
+              <li>Performance tracking</li>
+              <li>Iteration based on user behavior</li>
+            </ul>
+          </div>
+          <div class="service-card glass">
+            <h4>Collaboration & Strategy</h4>
+            <p>Cross-functional work aligning design, technical execution, and business goals.</p>
+            <ul>
+              <li>Cross-team collaboration</li>
+              <li>Technical scoping & feasibility</li>
+              <li>Project roadmap planning</li>
+              <li>Component library implementation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — RECENT WORK -->
+  <section id="work" data-reel="REEL 03 / WORK">
+
+    <div class="rw-section glass">
+      <div class="rw-left">
+        <div class="rw-project active" data-idx="0">
+          <span class="rw-year">2026</span>
+          <h3>AutoDex</h3>
+          <p>Designed, built, and deployed a web app car database with API integration and user profiles. A personal project showcasing both design and technical execution.</p>
+          <div class="rw-links">
+            <a href="https://autodx.io/" target="_blank">Visit Live Site ↗</a>
+          </div>
+        </div>
+        <div class="rw-project" data-idx="1">
+          <span class="rw-year">2025</span>
+          <h3>Gundry MD</h3>
+          <p>Rebuilt a high-traffic wellness e-commerce site from high-fidelity Figma designs using Builder.io, integrated with a Salesforce/Angular backend.</p>
+          <div class="rw-links">
+            <a href="https://www.gundrymd.com" target="_blank">Visit Live Site ↗</a>
+          </div>
+        </div>
+      </div>
+      <div class="rw-right">
+        <div class="rw-img visible">
+          <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/AutoDex.webp" alt="AutoDex">
+          <div class="rw-overlay">
+            <a href="https://autodx.io/" target="_blank">Visit Live Site ↗</a>
+          </div>
+        </div>
+        <div class="rw-img">
+          <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/GMD-shot1.webp" alt="Gundry MD">
+          <div class="rw-overlay">
+            <a href="https://www.gundrymd.com" target="_blank">Visit Live Site ↗</a>
+          </div>
+        </div>
+      </div>
+      <div class="rw-logos">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-gmd-300x135.webp" alt="Gundry MD">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-badlands-300x135.webp" alt="Badlands">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-newegg-300x135.webp" alt="Newegg">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-mattel-300x135.webp" alt="Mattel">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-hartfelt2-300x135.webp" alt="Hartfelt">
+        <img src="https://threeohfivestudios.com/wp-content/uploads/2026/03/client-logos-usc-300x135.webp" alt="USC">
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — EXPERIENCE -->
+  <section id="experience" data-reel="REEL 04 / REEL">
+    <div class="split">
+      <div class="split-head">
+        <p class="eyebrow rv">Timeline</p>
+        <h2 class="rv">Work<br>experience.</h2>
+      </div>
+      <div class="timeline glass">
+      <div class="tl-item rv">
+        <div class="year">2026</div>
+        <div class="detail">
+          <h4>Golden Hippo — Design Engineer</h4>
+          <p>Building and optimizing digital experiences at scale.</p>
+        </div>
+      </div>
+      <div class="tl-item rv">
+        <div class="year">2023</div>
+        <div class="detail">
+          <h4>Starke Marketing — Web Developer / Design Lead</h4>
+          <p>Led web design and development, owning projects from concept to deployment.</p>
+        </div>
+      </div>
+      <div class="tl-item rv">
+        <div class="year">2022</div>
+        <div class="detail">
+          <h4>General Assembly — Software Engineering Certificate</h4>
+          <p>Immersive program in full-stack software engineering.</p>
+        </div>
+      </div>
+      <div class="tl-item rv">
+        <div class="year">2019</div>
+        <div class="detail">
+          <h4>Murphy Research — Graphic Designer</h4>
+          <p>Designed research-driven visual assets and brand materials.</p>
+        </div>
+      </div>
+      <div class="tl-item rv">
+        <div class="year">2018</div>
+        <div class="detail">
+          <h4>Agency 2.0 — Graphic Designer</h4>
+          <p>Created visual design solutions across client campaigns.</p>
+        </div>
+      </div>
+      <div class="tl-item rv">
+        <div class="year">2016</div>
+        <div class="detail">
+          <h4>Newegg — Email Marketing Designer</h4>
+          <p>Designed and managed email marketing campaigns.</p>
+        </div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- 06 — CONTACT -->
+  <section id="contact" class="contact" data-reel="REEL 05 / CREDITS">
+    <p class="eyebrow rv">Contact</p>
+    <h2 class="rv">Let's build<br>something.</h2>
+    <p class="lede rv">Based in Los Angeles. Open to collaborations, freelance, and
+      full-time opportunities.<br>
+      <a href="mailto:lova@threeohfivestudios.com">lova@threeohfivestudios.com</a>
+    </p>
+    <div class="socials rv">
+      <a href="https://www.linkedin.com/in/lovarakoto/" target="_blank">LinkedIn</a>
+      <a href="https://www.behance.net/lovarakoto" target="_blank">Behance</a>
+      <a href="https://vimeo.com/threeohfivestudios" target="_blank">Vimeo</a>
+    </div>
+    <a class="resume-btn rv" href="https://threeohfivestudios.com/wp-content/uploads/2026/03/Lova_Resume_2026.pdf" target="_blank">Download Resume</a>
+  </section>
+
+</main>
+
+<footer>
+  <span>© 2026 Lova Rakoto</span>
+  <span>Los Angeles, CA</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = window.innerWidth < 760;
+const COUNT = isMobile ? 6000 : 14000;
+
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, .1, 100);
+camera.position.set(0, 0, 18);
+
+function makeWave(){
+  const a = new Float32Array(COUNT*3);
+  const side = Math.ceil(Math.sqrt(COUNT));
+  for(let i=0;i<COUNT;i++){
+    const gx = (i % side)/side - .5;
+    const gz = Math.floor(i/side)/side - .5;
+    const x = gx*46, z = gz*30;
+    a[i*3]   = x;
+    a[i*3+1] = Math.sin(x*.35)*1.6 + Math.cos(z*.5)*1.2 - 2;
+    a[i*3+2] = z - 6;
+  }
+  return a;
+}
+function makeHelix(){
+  const a = new Float32Array(COUNT*3);
+  for(let i=0;i<COUNT;i++){
+    const t = i/COUNT;
+    const strand = i%2 ? 0 : Math.PI;
+    const ang = t*Math.PI*10 + strand;
+    const r = 4.5 + (Math.random()-.5)*1.4;
+    a[i*3]   = Math.cos(ang)*r;
+    a[i*3+1] = (t-.5)*26;
+    a[i*3+2] = Math.sin(ang)*r;
+  }
+  return a;
+}
+function makeSphere(){
+  const a = new Float32Array(COUNT*3);
+  const phi = Math.PI*(3 - Math.sqrt(5));
+  for(let i=0;i<COUNT;i++){
+    const y = 1 - (i/(COUNT-1))*2;
+    const rad = Math.sqrt(1 - y*y);
+    const th = phi*i;
+    const R = 8 + (Math.random()-.5)*.7;
+    a[i*3]   = Math.cos(th)*rad*R;
+    a[i*3+1] = y*R;
+    a[i*3+2] = Math.sin(th)*rad*R;
+  }
+  return a;
+}
+function makeRing(){
+  const a = new Float32Array(COUNT*3);
+  for(let i=0;i<COUNT;i++){
+    const ang = Math.random()*Math.PI*2;
+    const r = 7 + (Math.random()-.5)*(Math.random()*3);
+    a[i*3]   = Math.cos(ang)*r;
+    a[i*3+1] = Math.sin(ang)*r*.55;
+    a[i*3+2] = (Math.random()-.5)*2.5;
+  }
+  return a;
+}
+function makeGrid(){
+  const a = new Float32Array(COUNT*3);
+  const side = Math.ceil(Math.sqrt(COUNT));
+  for(let i=0;i<COUNT;i++){
+    const gx = (i % side)/side - .5;
+    const gy = Math.floor(i/side)/side - .5;
+    a[i*3]   = gx*32;
+    a[i*3+1] = gy*20;
+    a[i*3+2] = 0;
+  }
+  return a;
+}
+const formations = [makeWave(), makeHelix(), makeSphere(), makeRing(), makeGrid()];
+
+const positions = new Float32Array(formations[0]);
+const colors = new Float32Array(COUNT*3);
+const seeds  = new Float32Array(COUNT);
+const sizes  = new Float32Array(COUNT);
+
+const cBlue  = new THREE.Color('#8FB8DC');
+const cWhite = new THREE.Color('#E8F2FF');
+const cAmber = new THREE.Color('#D98C4A');
+
+for(let i=0;i<COUNT;i++){
+  const c = Math.random() < .05 ? cAmber : cBlue.clone().lerp(cWhite, Math.random());
+  colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  seeds[i] = Math.random()*100;
+  sizes[i] = .4 + Math.random()*1.1;
+}
+
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
+geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
+
+const mat = new THREE.ShaderMaterial({
+  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  vertexColors:true,
+  uniforms:{
+    uTime:{ value:0 },
+    uPR:{ value: Math.min(devicePixelRatio,2) },
+  },
+  vertexShader:`
+    attribute float aSeed;
+    attribute float aSize;
+    varying vec3 vColor;
+    varying float vTwinkle;
+    uniform float uTime;
+    uniform float uPR;
+    void main(){
+      vColor = color;
+      vTwinkle = .55 + .45*sin(uTime*1.4 + aSeed*7.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = aSize * uPR * 42.0 / -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader:`
+    varying vec3 vColor;
+    varying float vTwinkle;
+    void main(){
+      float d = length(gl_PointCoord - .5);
+      float core = smoothstep(.5, .05, d);
+      gl_FragColor = vec4(vColor, core * vTwinkle * .85);
+    }`
+});
+const points = new THREE.Points(geo, mat);
+scene.add(points);
+
+let progress = 0;
+let targetProgress = 0;
+let velocity = 0;
+let lastY = scrollY;
+
+function readScroll(){
+  const max = document.documentElement.scrollHeight - innerHeight;
+  targetProgress = max > 0 ? scrollY / max : 0;
+  velocity += Math.min(Math.abs(scrollY - lastY)*.004, .5);
+  lastY = scrollY;
+}
+addEventListener('scroll', readScroll, { passive:true });
+
+const mouse = { x:0, y:0, tx:0, ty:0 };
+addEventListener('pointermove', e=>{
+  mouse.tx = (e.clientX/innerWidth - .5);
+  mouse.ty = (e.clientY/innerHeight - .5);
+});
+
+const clock = new THREE.Clock();
+const SEGS = formations.length - 1;
+
+function frame(){
+  requestAnimationFrame(frame);
+  const t = clock.getElapsedTime();
+  mat.uniforms.uTime.value = t;
+
+  progress += (targetProgress - progress)*.07;
+  velocity *= .92;
+
+  const f = Math.min(progress*SEGS, SEGS - .0001);
+  const idx = Math.floor(f);
+  const segT = f - idx;
+  const ease = segT*segT*(3-2*segT);
+  const A = formations[idx], B = formations[idx+1];
+
+  const pos = geo.attributes.position.array;
+  const turb = reduced ? 0 : velocity;
+  for(let i=0;i<COUNT;i++){
+    const j = i*3, s = seeds[i];
+    const dx = A[j]   + (B[j]  -A[j]  )*ease;
+    const dy = A[j+1] + (B[j+1]-A[j+1])*ease;
+    const dz = A[j+2] + (B[j+2]-A[j+2])*ease;
+    const n = Math.sin(t*.6 + s)* .12 + Math.sin(t*2.3 + s*3.1)*turb*2.2;
+    pos[j]   += (dx + n               - pos[j]  )*.06;
+    pos[j+1] += (dy + Math.cos(t*.5+s)*.12 - pos[j+1])*.06;
+    pos[j+2] += (dz + n*.6            - pos[j+2])*.06;
+  }
+  geo.attributes.position.needsUpdate = true;
+
+  mouse.x += (mouse.tx - mouse.x)*.04;
+  mouse.y += (mouse.ty - mouse.y)*.04;
+  camera.position.x = mouse.x*2.2;
+  camera.position.y = -mouse.y*1.6;
+  camera.position.z = 18 - progress*7;
+  camera.lookAt(0,0,0);
+  points.rotation.y = progress*Math.PI*.5 + (reduced ? 0 : t*.02);
+
+  renderer.render(scene, camera);
+}
+frame();
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const tcEl = document.getElementById('tc');
+const reelEl = document.getElementById('reel');
+const stripEl = document.getElementById('stripFill');
+
+function hud(){
+  requestAnimationFrame(hud);
+  const totalFrames = 90*24;
+  const fAbs = Math.floor(progress*totalFrames);
+  const fr = fAbs%24, sec = Math.floor(fAbs/24)%60, min = Math.floor(fAbs/1440);
+  const p2 = n=>String(n).padStart(2,'0');
+  tcEl.textContent = `00:${p2(min)}:${p2(sec)}:${p2(fr)}`;
+  stripEl.style.height = (progress*100)+'%';
+}
+hud();
+
+/* project switcher */
+const rwProjects=document.querySelectorAll('.rw-project');
+const rwImgs=document.querySelectorAll('.rw-img');
+rwProjects.forEach(p=>{
+  p.addEventListener('click',()=>{
+    const idx=p.dataset.idx;
+    rwProjects.forEach(pp=>pp.classList.toggle('active',pp===p));
+    rwImgs.forEach((img,i)=>img.classList.toggle('visible',i==idx));
+  });
+});
+
+/* glass cursor glow */
+document.querySelectorAll('.glass').forEach(el=>{
+  el.addEventListener('pointermove',e=>{
+    const r=el.getBoundingClientRect();
+    el.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');
+    el.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');
+  });
+});
+
+const sections = document.querySelectorAll('section');
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      reelEl.textContent = e.target.dataset.reel || '';
+      e.target.querySelectorAll('.rv').forEach(el=>el.classList.add('in'));
+    }
+  });
+},{ threshold:.35 });
+sections.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
