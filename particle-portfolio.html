@@ -28,6 +28,12 @@
   }
   ::selection{ background:var(--amber); color:var(--bg); }
 
+  /* section headings replaced by particles */
+  #hero h1, #about h2, #experience h2, #contact h2{
+    color:transparent;
+    -webkit-text-fill-color:transparent;
+  }
+
   /* nav */
   nav{
     position:fixed; top:0; left:0; right:0; z-index:4;
@@ -925,17 +931,23 @@ function makeGrid(){
   return a;
 }
 
-/* ---------- text-based formations (replaces section-specific shapes) ---------- */
+/* ---------- text-based formations ---------- */
 function makeTextFormation(text){
   const c = document.createElement('canvas');
   const w = 1024, h = 512;
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 240px Anton';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, w/2, h/2);
+  const lines = text.split('\n');
+  const fs = text.length < 8 ? 220 : 160;
+  ctx.font = `bold ${fs}px Anton`;
+  const lh = fs * 1.15;
+  const th = lines.length * lh;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, w/2, h/2 - th/2 + lh/2 + i * lh);
+  });
   const data = ctx.getImageData(0, 0, w, h).data;
   const points = [];
   const step = 4;
@@ -966,13 +978,45 @@ function makeTextFormation(text){
 
 const scatterPos = makeScatter();
 const formations = [
-  makeWave(),
-  makeTextFormation('DESIGN'),
+  makeTextFormation('LOVA'),
+  makeTextFormation('DESIGN\n&\nDEV'),
   makeTextFormation('WORK'),
   makeHelix(),
   makeTextFormation('CONTACT'),
   makeGrid()
 ];
+
+/* heading elements to track for particle text positioning */
+const headingEls = [
+  document.querySelector('#hero h1'),
+  document.querySelector('#about h2'),
+  null,
+  null,
+  document.querySelector('#contact h2'),
+];
+
+const headingOffsets = [null,null,null,null,null];
+const _v3 = new THREE.Vector3();
+function updateHeadingOffsets(){
+  const camZ = camera.position.z;
+  if(camZ >= 0){
+    const tanFov = Math.tan(camera.fov * Math.PI / 360);
+    const aspect = camera.aspect;
+    headingEls.forEach((el, i) => {
+      if(!el){ headingOffsets[i] = null; return; }
+      const r = el.getBoundingClientRect();
+      const sx = (r.left + r.width/2) / innerWidth * 2 - 1;
+      const sy = -(r.top + r.height/2) / innerHeight * 2 + 1;
+      const dir = _v3.set(sx * aspect * tanFov, sy * tanFov, -1).normalize();
+      const t = -camZ / dir.z;
+      headingOffsets[i] = _v3.set(
+        camera.position.x + dir.x * t,
+        camera.position.y + dir.y * t,
+        0
+      ).clone();
+    });
+  }
+}
 
 const positions = new Float32Array(scatterPos);
 const colors = new Float32Array(COUNT*3);
@@ -1106,7 +1150,7 @@ function lenisRaf(time){
 }
 lenisRaf();
 
-/* ---------- custom cursor ---------- */
+/* ---------- custom cursor (smooth ribbon) ---------- */
 let cursorHide = isMobile || reduced;
 const cursorCanvas = document.getElementById('cursorCanvas');
 const ctx = cursorCanvas.getContext('2d');
@@ -1118,8 +1162,10 @@ function resizeCursor(){
 resizeCursor();
 addEventListener('resize', resizeCursor);
 
-const trails = [];
+const trail = [];
+const MAX_TRAIL = 55;
 let cursorX = 0, cursorY = 0;
+let smoothX = 0, smoothY = 0;
 
 document.addEventListener('pointermove', e => {
   cursorX = e.clientX;
@@ -1130,28 +1176,40 @@ function drawCursor(){
   if(cursorHide){ ctx.clearRect(0,0,cw,ch); return; }
   ctx.clearRect(0,0,cw,ch);
 
-  /* bright core dot at cursor */
-  const grad = ctx.createRadialGradient(cursorX, cursorY, 0, cursorX, cursorY, 12);
-  grad.addColorStop(0, 'rgba(233,240,248,0.9)');
-  grad.addColorStop(0.3, 'rgba(217,140,74,0.5)');
+  /* smooth head follows cursor with slight lag to prevent sharp edges */
+  smoothX += (cursorX - smoothX) * 0.25;
+  smoothY += (cursorY - smoothY) * 0.25;
+
+  /* add head to trail */
+  trail.push({ x:smoothX, y:smoothY });
+  if(trail.length > MAX_TRAIL) trail.shift();
+
+  /* draw continuous ribbon */
+  const len = trail.length;
+  if(len > 2){
+    for(let i=1;i<len;i++){
+      const t = i / len;
+      const p0 = trail[i-1], p1 = trail[i];
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.strokeStyle = `rgba(217,140,74,${t * 0.45})`;
+      ctx.lineWidth = t * 5 + 0.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+  }
+
+  /* bright core glow at cursor head */
+  const grad = ctx.createRadialGradient(smoothX, smoothY, 0, smoothX, smoothY, 14);
+  grad.addColorStop(0, 'rgba(233,240,248,0.85)');
+  grad.addColorStop(0.25, 'rgba(217,140,74,0.5)');
   grad.addColorStop(1, 'rgba(217,140,74,0)');
   ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(cursorX, cursorY, 12, 0, Math.PI*2);
+  ctx.arc(smoothX, smoothY, 14, 0, Math.PI*2);
   ctx.fill();
-
-  /* trail particles */
-  trails.push({ x:cursorX, y:cursorY, life:1 });
-  for(let i=trails.length-1;i>=0;i--){
-    const t = trails[i];
-    t.life -= 0.012;
-    if(t.life <= 0){ trails.splice(i,1); continue; }
-    const r = t.life * 5;
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(217,140,74,${t.life * 0.6})`;
-    ctx.fill();
-  }
 }
 
 /* ---------- interaction ---------- */
@@ -1193,12 +1251,18 @@ function frame(){
   progress += (targetProgress - progress) * 0.07;
   scrollVelocity *= 0.92;
 
+  updateHeadingOffsets();
+
   const f = Math.min(progress * SEGS, SEGS - 0.0001);
   const idx = Math.floor(f);
   const segT = f - idx;
   const ease = segT*segT*(3-2*segT);
   const A = formations[idx];
   const B = formations[Math.min(idx+1, SEGS)];
+
+  /* heading offsets for the two formations being blended */
+  const oA = headingOffsets[idx] || _v3.set(0,0,0);
+  const oB = headingOffsets[Math.min(idx+1, SEGS)] || _v3.set(0,0,0);
 
   const pos = geo.attributes.position.array;
   const turb = reduced ? 0 : scrollVelocity;
@@ -1208,10 +1272,10 @@ function frame(){
   for(let i=0;i<COUNT;i++){
     const j = i*3, s = seeds[i];
 
-    /* morph target */
-    let dx = A[j]   + (B[j]  -A[j]  )*ease;
-    let dy = A[j+1] + (B[j+1]-A[j+1])*ease;
-    let dz = A[j+2] + (B[j+2]-A[j+2])*ease;
+    /* morph target + heading alignment offset */
+    let dx = A[j] + oA.x + ((B[j] + oB.x) - (A[j] + oA.x)) * ease;
+    let dy = A[j+1] + oA.y + ((B[j+1] + oB.y) - (A[j+1] + oA.y)) * ease;
+    let dz = A[j+2] + oA.z + ((B[j+2] + oB.z) - (A[j+2] + oA.z)) * ease;
 
     /* noise turbulence */
     const n = Math.sin(t*.6 + s)* .12 + Math.sin(t*2.3 + s*3.1)*turb*2.2;
