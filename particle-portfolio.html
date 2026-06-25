@@ -938,27 +938,31 @@ function makeTextFormation(text){
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const lines = text.split('\n');
-  const fs = text.length < 8 ? 220 : 160;
+  const longest = lines.reduce((a, l) => Math.max(a, l.length), 0);
+  const fs = longest < 5 ? 160 : longest < 10 ? 130 : 100;
   ctx.font = `bold ${fs}px Anton`;
   const lh = fs * 1.15;
   const th = lines.length * lh;
+  const lx = 24;
   lines.forEach((line, i) => {
-    ctx.fillText(line, w/2, h/2 - th/2 + lh/2 + i * lh);
+    ctx.fillText(line, lx, h/2 - th/2 + lh/2 + i * lh);
   });
   const data = ctx.getImageData(0, 0, w, h).data;
   const points = [];
-  const step = 4;
+  const step = 2;
+  const scaleX = 18;
+  const scaleY = 10;
   for(let y=0;y<h;y+=step){
     for(let x=0;x<w;x+=step){
       const i = (y*w + x)*4;
       if(data[i+3]>128){
         points.push({
-          x: (x/w - .5)*36,
-          y: (.5 - y/h)*20,
-          z: (Math.random()-.5)*5
+          x: (x/w) * scaleX,
+          y: (.5 - y/h) * scaleY,
+          z: (Math.random()-.5) * 2.5
         });
       }
     }
@@ -977,13 +981,15 @@ function makeTextFormation(text){
 /* ---------- setup ---------- */
 
 const scatterPos = makeScatter();
+/* wait for Google Font to load so canvas text renders at correct size */
+await document.fonts.ready;
 const formations = [
   makeTextFormation('LOVA'),
   makeTextFormation('DESIGN\n&\nDEV'),
   makeTextFormation('WORK'),
-  makeHelix(),
+  makeTextFormation('REEL'),
   makeTextFormation('CONTACT'),
-  makeGrid()
+  makeTextFormation('LET\'S\nBUILD')
 ];
 
 /* heading elements to track for particle text positioning */
@@ -991,11 +997,12 @@ const headingEls = [
   document.querySelector('#hero h1'),
   document.querySelector('#about h2'),
   null,
-  null,
+  document.querySelector('#experience h2'),
   document.querySelector('#contact h2'),
+  null,
 ];
 
-const headingOffsets = [null,null,null,null,null];
+const headingOffsets = Array(6).fill(null);
 const _v3 = new THREE.Vector3();
 function updateHeadingOffsets(){
   const camZ = camera.position.z;
@@ -1005,8 +1012,9 @@ function updateHeadingOffsets(){
     headingEls.forEach((el, i) => {
       if(!el){ headingOffsets[i] = null; return; }
       const r = el.getBoundingClientRect();
-      const sx = (r.left + r.width/2) / innerWidth * 2 - 1;
-      const sy = -(r.top + r.height/2) / innerHeight * 2 + 1;
+      /* left edge of heading in NDC + small nudge for the left-padded text */
+      const sx = ((r.left + 12) / innerWidth) * 2 - 1;
+      const sy = -(r.top + r.height * 0.5) / innerHeight * 2 + 1;
       const dir = _v3.set(sx * aspect * tanFov, sy * tanFov, -1).normalize();
       const t = -camZ / dir.z;
       headingOffsets[i] = _v3.set(
@@ -1016,6 +1024,12 @@ function updateHeadingOffsets(){
       ).clone();
     });
   }
+}
+
+/* scroll-driven Y so text formations scroll in Y like DOM text */
+function textScrollY(sectionIdx){
+  const spacing = 8;
+  return -progress * spacing * SEGS + sectionIdx * spacing;
 }
 
 const positions = new Float32Array(scatterPos);
@@ -1058,7 +1072,7 @@ const mat = new THREE.ShaderMaterial({
       vColor = color;
       vTwinkle = .55 + .45*sin(uTime*1.4 + aSeed*7.0);
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = aSize * uPR * 42.0 / -mv.z;
+      gl_PointSize = aSize * uPR * 28.0 / -mv.z;
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader:`
@@ -1247,7 +1261,7 @@ function frame(){
     return;
   }
 
-  /* normal phase — particle morphs between formations (some are text shapes) */
+  /* normal phase — particle morphs between section-title text formations */
   progress += (targetProgress - progress) * 0.07;
   scrollVelocity *= 0.92;
 
@@ -1261,8 +1275,13 @@ function frame(){
   const B = formations[Math.min(idx+1, SEGS)];
 
   /* heading offsets for the two formations being blended */
-  const oA = headingOffsets[idx] || _v3.set(0,0,0);
-  const oB = headingOffsets[Math.min(idx+1, SEGS)] || _v3.set(0,0,0);
+  const rawA = headingOffsets[idx];
+  const rawB = headingOffsets[Math.min(idx+1, SEGS)];
+  const oA = rawA || _v3.set(0,0,0);
+  const oB = rawB || _v3.set(0,0,0);
+  /* use scroll-driven Y so text scrolls with the page like DOM */
+  const scrollYA = textScrollY(idx);
+  const scrollYB = textScrollY(Math.min(idx+1, SEGS));
 
   const pos = geo.attributes.position.array;
   const turb = reduced ? 0 : scrollVelocity;
@@ -1272,9 +1291,10 @@ function frame(){
   for(let i=0;i<COUNT;i++){
     const j = i*3, s = seeds[i];
 
-    /* morph target + heading alignment offset */
+    /* morph target + heading X/Z alignment + scroll-driven Y */
+    const easeY = scrollYA + (scrollYB - scrollYA) * ease;
     let dx = A[j] + oA.x + ((B[j] + oB.x) - (A[j] + oA.x)) * ease;
-    let dy = A[j+1] + oA.y + ((B[j+1] + oB.y) - (A[j+1] + oA.y)) * ease;
+    let dy = A[j+1] + easeY;
     let dz = A[j+2] + oA.z + ((B[j+2] + oB.z) - (A[j+2] + oA.z)) * ease;
 
     /* noise turbulence */
